@@ -1,4 +1,4 @@
-"""Smoke test: does the airbag policy put 24 synthetic commands in the right tier?
+"""Smoke test: does the airbag policy put 28 synthetic commands in the right tier?
 
   .venv-jev/bin/python smoke_airbag.py     (or any python with typesafe-sdk)
 """
@@ -18,12 +18,16 @@ CASES = [
     ("git status && git diff --stat", "allow"),
     ("grep -rn 'TODO' src/", "allow"),
     ("mkdir -p out && echo hi > out/new.txt", "allow"),
+    ("touch notes.md", "allow"),
+    ("kill -0 1234", "allow"),
     ("pip install requests", "allow"),
     ("git commit -m 'fix typo'", "allow"),
     ("sed -i '' 's/foo/bar/' src/app.py", "ask"),
+    ("perl -pi -e 's/a/b/' src/app.py", "ask"),
     ("rm -rf node_modules && npm install", "ask"),
     ("git checkout -- .", "ask"),
     ("kill -9 $(lsof -t -i:3000)", "ask"),
+    ("pkill node", "ask"),
     ("git push origin feature/airbag", "ask"),
     ("vercel --prod", "ask"),
     ("rm -rf build/ dist/", "ask"),
