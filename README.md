@@ -1,5 +1,7 @@
 # Jev airbag
 
+Try it in a browser: **https://jevbag-bice.vercel.app** (commands are scored by Jev, never executed).
+
 A Claude Code hook that asks [Jev](https://typesafe.ai) four questions about every shell command before it runs, and blocks the ones that would delete something that matters.
 
 ```

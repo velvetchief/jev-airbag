@@ -6,33 +6,24 @@ decision. Commands are scored, never executed. Binds to 127.0.0.1 only.
 """
 import json
 import os
-import subprocess
-import sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from airbag import HERE
+from airbag import HERE, QUESTIONS
+from hook import decide
 
 PORT = int(os.environ.get("PORT", "8765"))
-LOG = os.path.expanduser("~/.jev-airbag/log.jsonl")
 DEMO_CWD = os.path.join(os.path.dirname(HERE), "jev-airbag-demo")
 
 
-def run_hook(command: str) -> dict:
+def run_hook(command: str, cwd: str = DEMO_CWD) -> dict:
+    """Send one command through hook.decide() as a Claude Code PreToolUse event."""
     event = {"tool_name": "Bash", "tool_input": {"command": command},
-             "cwd": DEMO_CWD, "session_id": "live-demo", "hook_event_name": "PreToolUse"}
-    p = subprocess.run([sys.executable, os.path.join(HERE, "hook.py")],
-                       input=json.dumps(event), capture_output=True, text=True, timeout=15)
-    row = {}
-    try:
-        with open(LOG) as f:
-            last = f.readlines()[-1]
-        row = json.loads(last) if json.loads(last).get("command") == command else {}
-    except (OSError, IndexError, ValueError):
-        pass
-    tier = "block" if p.returncode == 2 else "ask" if '"ask"' in p.stdout else "allow"
-    return {"command": command, "tier": tier, "exit": p.returncode,
-            "stdout": p.stdout.strip(), "stderr": p.stderr.strip(),
-            **{k: row.get(k) for k in ("destroys", "remote", "escapes", "critical", "ms", "tokens", "why")}}
+             "cwd": cwd, "session_id": "live-demo", "hook_event_name": "PreToolUse"}
+    code, out, err, r = decide(event)
+    r = r or {}
+    tier = "block" if code == 2 else "ask" if '"ask"' in out else "allow"
+    return {"command": command, "tier": tier, "exit": code, "stdout": out, "stderr": err,
+            **{k: r.get(k) for k in (*QUESTIONS, "ms", "tokens", "why")}}
 
 
 class Handler(BaseHTTPRequestHandler):

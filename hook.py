@@ -13,7 +13,7 @@ import sys
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from airbag import check  # noqa: E402
+from airbag import QUESTIONS, check  # noqa: E402
 
 LOG = os.path.expanduser("~/.jev-airbag/log.jsonl")
 
@@ -27,39 +27,46 @@ def log(row: dict):
         pass
 
 
-def ask(reason: str):
-    print(json.dumps({"hookSpecificOutput": {
+def ask(reason: str) -> str:
+    return json.dumps({"hookSpecificOutput": {
         "hookEventName": "PreToolUse",
         "permissionDecision": "ask",
         "permissionDecisionReason": reason,
-    }}))
-    return 0
+    }})
 
 
-def main():
-    event = json.load(sys.stdin)
+def decide(event: dict) -> tuple[int, str, str, dict | None]:
+    """Return (exit code, stdout, stderr, Jev result) for one PreToolUse event."""
     if event.get("tool_name") != "Bash":
-        return 0
+        return 0, "", "", None
     command = (event.get("tool_input") or {}).get("command", "")
     if not command.strip():
-        return 0
+        return 0, "", "", None
     try:
         r = check(command, cwd=event.get("cwd"))
     except Exception as e:  # network, auth, timeout
         log({"command": command, "tier": "error", "error": repr(e)[:200]})
         if os.environ.get("AIRBAG_FAIL") == "open":
-            return 0
-        return ask(f"Jev airbag could not reach Jev ({type(e).__name__}); confirm this one yourself.")
+            return 0, "", "", None
+        return 0, ask(f"Jev airbag could not reach Jev ({type(e).__name__}); confirm this one yourself."), "", None
     log({**r, "session": event.get("session_id"), "cwd": event.get("cwd")})
-    scores = ", ".join(f"{k} {r[k]:.2f}" for k in ("destroys", "remote", "escapes", "critical"))
+    scores = ", ".join(f"{k} {r[k]:.2f}" for k in QUESTIONS)
     if r["tier"] == "block":
-        print(f"Jev airbag BLOCKED this command ({r['why']}; {scores}). "
-              "Do not retry it or a variant of it. Explain to the user what you wanted "
-              "to do and let them run it themselves if they really want it.", file=sys.stderr)
-        return 2
+        return 2, "", (f"Jev airbag BLOCKED this command ({r['why']}; {scores}). "
+                       "Do not retry it or a variant of it. Explain to the user what you wanted "
+                       "to do and let them run it themselves if they really want it."), r
     if r["tier"] == "ask":
-        return ask(f"Jev airbag: {r['why']} ({scores})")
-    return 0
+        return 0, ask(f"Jev airbag: {r['why']} ({scores})"), "", r
+    return 0, "", "", r
+
+
+def main():
+    code, out, err, _ = decide(json.load(sys.stdin))
+    if out:
+        print(out)
+    if err:
+        print(err, file=sys.stderr)
+    return code
 
 
 if __name__ == "__main__":
