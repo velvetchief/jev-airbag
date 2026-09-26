@@ -1,0 +1,7 @@
+{
+  "framework": null,
+  "rewrites": [
+    { "source": "/", "destination": "/live.html" },
+    { "source": "/run", "destination": "/api/run" }
+  ]
+}
