@@ -57,6 +57,12 @@ If Jev can't be reached the hook asks you rather than letting the command throug
 .venv/bin/python airbag.py "rm -rf ~/Documents"
 ```
 
+Or in a browser: `live.py` serves a page on 127.0.0.1:8765 where each command you type goes through `hook.py` exactly as Claude Code would send it, and the page shows the four scores, the decision, and what the hook printed. Commands are scored, never executed.
+
+```bash
+.venv/bin/python live.py
+```
+
 ## Replay your own history
 
 `extract_calls.py` pulls every Bash command Claude Code has run from your local transcripts. `replay.py` sends them through the airbag (commands that look like they contain a key are skipped), and `scoreboard.py` shows how many would have been allowed, asked, or blocked, the fifteen worst, and what the whole run cost. Your history stays in `data/` and `out/`, which are git-ignored.
