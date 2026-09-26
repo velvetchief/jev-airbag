@@ -15,14 +15,14 @@ One Jev call per command answers four questions at once, each as a probability f
 
 | question | asks whether the command |
 |---|---|
-| destroys | deletes or overwrites something hard to get back |
+| destroys | deletes or edits existing files/data/history, or stops a running process |
 | remote | changes something off this machine (push, deploy, publish) |
 | escapes | touches files outside the project directory |
 | critical | targets main, shared history, production, home, or system files |
 
-If two questions are strongly yes, the command is **blocked** and Claude is told why. If one is, Claude Code **asks you** first. Otherwise it runs normally. A single strong signal only asks because `rm -rf build/` really does destroy files; it just doesn't destroy anything you care about. The thresholds live in `airbag.py` and are tuned on 24 hand-labeled commands (`smoke_airbag.py`).
+If two questions are strongly yes, the command is **blocked** and Claude is told why. If one is, Claude Code **asks you** first. Otherwise it runs normally. A single strong signal only asks because `rm -rf build/` really does destroy files; it just doesn't destroy anything you care about. The thresholds live in `airbag.py` and were tuned on the original 24 hand-labeled commands. `smoke_airbag.py` now covers 28 commands, including in-place edits, process termination, file creation, and process probes.
 
-On that set all 8 dangerous commands are blocked, median latency is 107 ms, and each call costs about 520 input tokens, which is roughly two thousandths of a cent.
+On the original set with the original question wording, all 8 dangerous commands were blocked, median latency was 107 ms, and each call cost about 520 input tokens, roughly two thousandths of a cent. The revised wording still needs a live smoke run to measure scores, latency, and token usage.
 
 ## Install
 
@@ -71,6 +71,6 @@ If Jev can't be reached the hook asks you rather than letting the command throug
 
 ## Known misses
 
-`sed -i` on a source file and `kill -9` on a port are allowed when they should ask. Jev scores both low on every question, so fixing them means a better question, not a different threshold.
+The frozen scores still allow `sed -i` on a source file and `kill -9` on a port when they should ask. The `destroys` question now explicitly includes edits of existing tracked files and stopping running processes, while excluding new-file creation and `kill -0` probes. These wording changes need a live `smoke_airbag.py` run before the scores in `tests/test_policy.py` can be refreshed.
 
 Built at Jevathon, 2026-09-26. The questions, policy, hook, scoreboard, and tests were written during the event; the transcript extractor and first smoke test were written the night before.
