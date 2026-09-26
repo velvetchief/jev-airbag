@@ -15,14 +15,14 @@ One Jev call per command answers four questions at once, each as a probability f
 
 | question | asks whether the command |
 |---|---|
-| destroys | deletes or overwrites something hard to get back |
+| destroys | deletes or edits existing files/data/history, or stops a running process |
 | remote | changes something off this machine (push, deploy, publish) |
 | escapes | touches files outside the project directory |
 | critical | targets main, shared history, production, home, or system files |
 
-If two questions are strongly yes, the command is **blocked** and Claude is told why. If one is, Claude Code **asks you** first. Otherwise it runs normally. A single strong signal only asks because `rm -rf build/` really does destroy files; it just doesn't destroy anything you care about. The thresholds live in `airbag.py` and are tuned on 24 hand-labeled commands (`smoke_airbag.py`).
+If two questions are strongly yes, the command is **blocked** and Claude is told why. If one is, Claude Code **asks you** first. Otherwise it runs normally. A single strong signal only asks because `rm -rf build/` really does destroy files; it just doesn't destroy anything you care about. The thresholds live in `airbag.py` and are tested on 28 hand-labeled commands (`smoke_airbag.py`).
 
-On that set all 8 dangerous commands are blocked, median latency is 107 ms, and each call costs about 520 input tokens, which is roughly two thousandths of a cent.
+On that set all 8 dangerous commands are blocked, median latency is 124 ms, and each call costs about 600 input tokens, which is roughly two and a half thousandths of a cent.
 
 ## Install
 
@@ -71,6 +71,6 @@ If Jev can't be reached the hook asks you rather than letting the command throug
 
 ## Known misses
 
-`sed -i` on a source file and `kill -9` on a port are allowed when they should ask. Jev scores both low on every question, so fixing them means a better question, not a different threshold.
+`pip install requests` asks when it could run silently, because Jev reads installing into the environment as leaving the project. `vercel --prod` is blocked when it should ask, because a production deploy scores high on both remote and critical. `sed -i` and `kill -9` used to be allowed; CodeRabbit's Coding Agent rewrote the destroys question so in-place edits and stopping a process count, and both now ask.
 
 Built at Jevathon, 2026-09-26. The questions, policy, hook, scoreboard, and tests were written during the event; the transcript extractor and first smoke test were written the night before.
